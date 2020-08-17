@@ -16,7 +16,7 @@ dataset_path = args.dataset_path
 
 print(dataset_path)
 
-kitti_calib_file = dataset_path + '/calib.txt'
+kitti_calib_file = dataset_path + '/calib-c.txt'
 
 
 calib_template = Template('''{
@@ -122,7 +122,7 @@ with open(kitti_calib_file, 'r') as stream:
 
     tx = -P1[0,3]/P1[0,0]
 
-    img = cv2.imread(dataset_path + '/image_0/000000.png')
+    img = cv2.imread(dataset_path + '/image_00/data/0000000000.png')
     rx = img.shape[1]
     ry = img.shape[0]
 
