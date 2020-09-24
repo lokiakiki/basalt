@@ -284,7 +284,7 @@ bool KeypointVoEstimator::measure(const OpticalFlowResult::Ptr& opt_flow_meas,
             getPoseStateWithLin(tcido.frame_id).getPose();
         Sophus::SE3d T_0_1 =
             calib.T_i_c[0].inverse() * T_i0_i1 * calib.T_i_c[tcido.cam_id];
-
+            
         if (T_0_1.translation().squaredNorm() < min_triang_distance2) continue;
 
         Eigen::Vector4d p0_triangulated =
@@ -620,6 +620,7 @@ void KeypointVoEstimator::marginalize(
 }
 
 void KeypointVoEstimator::optimize() {
+  config.vio_debug = true;
   if (config.vio_debug) {
     std::cout << "=================================" << std::endl;
   }

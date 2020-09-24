@@ -156,7 +156,7 @@ class KittiIO : public DatasetIoInterface {
       uint64_t timestamp = timeToTimestamps(line);
       std::stringstream imuDataPath;
       imuDataPath << std::setfill('0') << std::setw(10) << imuId << ".txt";
-      std::ifstream imuDataFile(path + "/100data/" + imuDataPath.str());
+      std::ifstream imuDataFile(path + "/100data/" + imuDataPath.str());  //100hz imu folder
       std::string imuLine;
 
       if (std::getline(imuDataFile, imuLine)){
@@ -164,18 +164,23 @@ class KittiIO : public DatasetIoInterface {
         char *cha = (char*)imuLine.data();
         double tmpd;
         int tmpi;
+        Eigen::Matrix3d kittiImu2FactImu;
+        kittiImu2FactImu << -1, 0, 0,
+                            0, -1, 0,
+                            0, 0, 1;
+
         sscanf(cha, "%lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %d %d %d %d %d", 
-                           &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, 
-                           &accel[0], &accel[1], &accel[2], &tmpd, &tmpd, &tmpd, &gyro[0], &gyro[1], &gyro[2], 
+                           &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpd,
+                           &tmpd, &accel[0], &accel[1], &accel[2], &tmpd, &tmpd, &tmpd, &gyro[0], &gyro[1], &gyro[2],
                            &tmpd, &tmpd, &tmpd, &tmpd, &tmpd, &tmpi, &tmpi, &tmpi, &tmpi, &tmpi);
 
         data->accel_data.emplace_back();
         data->accel_data.back().timestamp_ns = timestamp;
-        data->accel_data.back().data = accel;
+        data->accel_data.back().data = kittiImu2FactImu * accel;
 
         data->gyro_data.emplace_back();
         data->gyro_data.back().timestamp_ns = timestamp;
-        data->gyro_data.back().data = gyro;
+        data->gyro_data.back().data = kittiImu2FactImu * gyro;
 
         imuId +=1;
       }else{  //imu data less timestamps

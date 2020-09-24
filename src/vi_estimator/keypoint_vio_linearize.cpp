@@ -80,7 +80,6 @@ void KeypointVioEstimator::linearizeAbsIMU(
 
       // error
       imu_error += 0.5 * res.transpose() * kv.second.get_cov_inv() * res;
-      std::cout << "imu_error:" << imu_error << std::endl;
 
       // states
       abs_H.block<9, 9>(start_idx, start_idx) +=
@@ -149,7 +148,6 @@ void KeypointVioEstimator::linearizeAbsIMU(
 
         bg_error += 0.5 * res_bg.transpose() *
                     gyro_bias_weight_dt.asDiagonal() * res_bg;
-        std::cout << "res_bg:\n" << res_bg << "\nbg_error:" << bg_error << std::endl;
       }
 
       {
@@ -173,7 +171,6 @@ void KeypointVioEstimator::linearizeAbsIMU(
 
         ba_error += 0.5 * res_ba.transpose() *
                     accel_bias_weight_dt.asDiagonal() * res_ba;
-        std::cout << "res_ba:\n" << res_ba << "\nba_error:" << ba_error << std::endl;
       }
     }
   }

@@ -139,7 +139,7 @@ void KeypointVioEstimator::initialize(const Eigen::Vector3d& bg,
 
       // Correct camera time offset
       // curr_frame->t_ns += calib.cam_time_offset_ns;
-      std::cout << "cf_t" << curr_frame->t_ns << std::endl;
+      std::cout << "cf_t " << curr_frame->t_ns << std::endl;
 
       if (!initialized) {
         while (data->t_ns < curr_frame->t_ns) {
@@ -185,8 +185,6 @@ void KeypointVioEstimator::initialize(const Eigen::Vector3d& bg,
         meas.reset(new IntegratedImuMeasurement(
             prev_frame->t_ns, last_state.getState().bias_gyro,
             last_state.getState().bias_accel));
-        std::cout << "meas_re: pf_t " << prev_frame->t_ns << "\nl_bg\n" << last_state.getState().bias_gyro
-                  << "\nl_ba\n" << last_state.getState().bias_accel << std::endl;
 
         while (data->t_ns <= prev_frame->t_ns) {
           std::cout << "4 ";
@@ -195,7 +193,7 @@ void KeypointVioEstimator::initialize(const Eigen::Vector3d& bg,
           data->accel = calib.calib_accel_bias.getCalibrated(data->accel);
           data->gyro = calib.calib_gyro_bias.getCalibrated(data->gyro);
         }
-        std::cout << "4: d_t " << data->t_ns << " pf_t" << prev_frame->t_ns << std::endl;
+        std::cout << "4: imu_data_t " << data->t_ns << " pf_t " << prev_frame->t_ns << std::endl;
 
         while (data->t_ns <= curr_frame->t_ns) {
           std::cout << "5 ";
@@ -205,7 +203,7 @@ void KeypointVioEstimator::initialize(const Eigen::Vector3d& bg,
           data->accel = calib.calib_accel_bias.getCalibrated(data->accel);
           data->gyro = calib.calib_gyro_bias.getCalibrated(data->gyro);
         }
-        std::cout << "5: d_t " << data->t_ns << " cf_t " << curr_frame->t_ns << std::endl;
+        std::cout << "5: imu_data_t " << data->t_ns << " cf_t " << curr_frame->t_ns << std::endl;
 
         if (meas->get_start_t_ns() + meas->get_dt_ns() < curr_frame->t_ns) {
           if (!data.get()) break;
@@ -803,7 +801,6 @@ void KeypointVioEstimator::optimize() {
     //    marg_order.print_order();
 
     for (int iter = 0; iter < config.vio_max_iterations; iter++) {
-      std::cout << "iter = " << iter << std::endl;
       auto t1 = std::chrono::high_resolution_clock::now();
 
       double rld_error;
@@ -829,27 +826,20 @@ void KeypointVioEstimator::optimize() {
       double error_total =
           rld_error + imu_error + marg_prior_error + ba_error + bg_error;
 
-      std::cout << "rld_error: " << rld_error << " imu_error: " << imu_error 
-          << " marg_prior_error: " << marg_prior_error << " ba_error: " << ba_error 
-          << " bg_error: " << bg_error << std::endl;
-
       if (config.vio_debug)
         std::cout << "[LINEARIZE] Error: " << error_total << " num points "
                   << std::endl;
 
-      std::cout << "op1" << std::endl;
       lopt.accum.setup_solver();
       Eigen::VectorXd Hdiag = lopt.accum.Hdiagonal();
 
       bool converged = false;
 
-      std::cout << "op2 ";
       if (config.vio_use_lm) {  // Use Levenberg–Marquardt
         bool step = false;
         int max_iter = 10;
 
         while (!step && max_iter > 0 && !converged) {
-          std::cout << "op21 lm ";
           Eigen::VectorXd Hdiag_lambda = Hdiag * lambda;
           for (int i = 0; i < Hdiag_lambda.size(); i++)
             Hdiag_lambda[i] = std::max(Hdiag_lambda[i], min_lambda);
@@ -859,7 +849,6 @@ void KeypointVioEstimator::optimize() {
           if (max_inc < 1e-4) converged = true;
 
           backup();
-          std::cout << "op22 ";
 
           // apply increment to poses
           for (auto& kv : frame_poses) {
@@ -882,21 +871,17 @@ void KeypointVioEstimator::optimize() {
             }
           };
           tbb::parallel_for(keys_range, update_points_func);
-          std::cout << "op23 ";
 
           double after_update_marg_prior_error = 0;
           double after_update_vision_error = 0, after_update_imu_error = 0,
                  after_bg_error = 0, after_ba_error = 0;
 
           computeError(after_update_vision_error);
-          std::cout << "op24 ";
           computeImuError(aom, after_update_imu_error, after_bg_error,
                           after_ba_error, frame_states, imu_meas,
                           gyro_bias_weight, accel_bias_weight, g);
-          std::cout << "op25 ";
           computeMargPriorError(marg_order, marg_H, marg_b,
                                 after_update_marg_prior_error);
-          std::cout << "op26 ";
 
           double after_error_total =
               after_update_vision_error + after_update_imu_error +
@@ -925,7 +910,6 @@ void KeypointVioEstimator::optimize() {
             step = true;
           }
           max_iter--;
-          std::cout << "op27 " << std::endl;
         }
 
         if (config.vio_debug && converged) {
@@ -939,23 +923,18 @@ void KeypointVioEstimator::optimize() {
         const Eigen::VectorXd inc = lopt.accum.solve(&Hdiag_lambda);
         double max_inc = inc.array().abs().maxCoeff();
         if (max_inc < 1e-4) converged = true;
-        std::cout << "op21 gn ";
 
         // apply increment to poses
         for (auto& kv : frame_poses) {
           int idx = aom.abs_order_map.at(kv.first).first;
-          std::cout << "op211-0 ";
           kv.second.applyInc(-inc.segment<POSE_SIZE>(idx));
-          std::cout << "op211 ";
         }
 
         // apply increment to states
         for (auto& kv : frame_states) {
           int idx = aom.abs_order_map.at(kv.first).first;
           kv.second.applyInc(-inc.segment<POSE_VEL_BIAS_SIZE>(idx));
-          std::cout << "op212 ";
         }
-        std::cout << "op22 ";
 
         // Update points
         tbb::blocked_range<size_t> keys_range(0, rld_vec.size());
@@ -964,11 +943,9 @@ void KeypointVioEstimator::optimize() {
             const auto& rld = rld_vec[i];
             updatePoints(aom, rld, inc);
           }
-          std::cout << "op23 ";
         };
         tbb::parallel_for(keys_range, update_points_func);
       }
-      std::cout << "\nop3" << std::endl;
 
       if (config.vio_debug) {
         double after_update_marg_prior_error = 0;
